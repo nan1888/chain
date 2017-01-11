@@ -275,6 +275,7 @@ func mustDecodeHex(str string) []byte {
 	return data
 }
 
+//Todo: (ameets) add new test cases for new checkTxSighashCommitment error scenarios
 func TestTxSighashCommitment(t *testing.T) {
 	var initialBlockHash bc.Hash
 
