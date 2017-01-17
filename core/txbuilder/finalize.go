@@ -63,6 +63,7 @@ var ErrTxSignatureFailure = errors.New("tx signature was attempted but failed")
 func checkTxSighashCommitment(tx *bc.Tx) error {
 	allIssuances := true
 	sigHasher := bc.NewSigHasher(&tx.TxData)
+	var lastError error
 
 	for i, inp := range tx.Inputs {
 		var args [][]byte
@@ -73,7 +74,7 @@ func checkTxSighashCommitment(tx *bc.Tx) error {
 		case *bc.IssuanceInput:
 			args = t.Arguments
 		}
-		// Note: These numbers will need to change if more arguments are added to the program
+		// Note: These numbers will need to change if more args are added such that the minimum length changes
 		switch {
 		// A conforming arguments list contains
 		// [... arg1 arg2 ... argN N sig1 sig2 ... sigM prog]
@@ -81,11 +82,13 @@ func checkTxSighashCommitment(tx *bc.Tx) error {
 		// N is 0 (prog takes no args), and assuming there must be at
 		// least one signature, args has a minimum length of 3.
 		case len(args) == 0:
-			// no program to check
+			lastError = ErrNoTxSighashAttempt
 			continue
 		case len(args) < 3:
-			return ErrTxSignatureFailure
+			lastError = ErrTxSignatureFailure
+			continue
 		}
+		lastError = ErrNoTxSighashCommitment
 		prog := args[len(args)-1]
 		if len(prog) != 35 {
 			continue
@@ -100,11 +103,12 @@ func checkTxSighashCommitment(tx *bc.Tx) error {
 		if !bytes.Equal(h[:], prog[1:33]) {
 			continue
 		}
+		// At least one input passes commitment checks
 		return nil
 	}
 
 	if !allIssuances {
-		return ErrNoTxSighashCommitment
+		return lastError
 	}
 
 	return nil
